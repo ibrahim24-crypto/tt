@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visitors Analytics Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
@@ -18,6 +19,7 @@
             --gray: #6c757d;
             --danger: #e63946;
             --card-bg: rgba(255, 255, 255, 0.85);
+            --background: linear-gradient(135deg, #1d3557, #457b9d);
         }
         
         * {
@@ -28,7 +30,7 @@
         }
         
         body {
-            background: linear-gradient(135deg, #1d3557, #457b9d);
+            background: var(--background);
             color: #333;
             min-height: 100vh;
             padding: 20px;
@@ -322,10 +324,82 @@
                 flex-direction: column;
             }
         }
+        
+        /* Dark mode switch */
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        .slider:after {
+            content: "☀️";
+            position: absolute;
+            left: 5px;
+            top: 2px;
+            font-size: 18px;
+        }
+        
+        input:checked + .slider:after {
+            content: "🌙";
+            left: 35px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="theme-switch">
+            <label class="switch">
+                <input type="checkbox" id="themeToggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        
         <header>
             <div class="logo">
                 <div class="logo-icon">VA</div>
@@ -435,17 +509,15 @@
         </footer>
     </div>
 
-    <!-- Font Awesome for icons -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-    
     <script>
-        // Firebase configuration
+        // Firebase configuration with correct API key
         const firebaseConfig = {
-            projectId: "screen-clicker-2010",
-            appId: "1:47509252596:web:b9e49f5b0ca9ff6b8a71a1",
-            storageBucket: "screen-clicker-2010.firebasestorage.app",
+            apiKey: "AIzaSyB5y97C6OC5HLMB9WkdII5PpUOsfFtdqgk",
             authDomain: "screen-clicker-2010.firebaseapp.com",
+            projectId: "screen-clicker-2010",
+            storageBucket: "screen-clicker-2010.firebasestorage.app",
             messagingSenderId: "47509252596",
+            appId: "1:47509252596:web:b9e49f5b0ca9ff6b8a71a1",
             measurementId: "G-WF9SYRQBVT"
         };
         
@@ -462,6 +534,7 @@
         const loading = document.getElementById('loading');
         const loginForm = document.getElementById('loginForm');
         const loginError = document.getElementById('loginError');
+        const themeToggle = document.getElementById('themeToggle');
         
         const totalVisitorsEl = document.getElementById('totalVisitors');
         const returningVisitorsEl = document.getElementById('returningVisitors');
@@ -713,8 +786,34 @@
             });
         }
         
+        // Theme toggle functionality
+        function setupThemeToggle() {
+            const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+            const currentTheme = localStorage.getItem('theme');
+            
+            // Set the initial theme
+            if (currentTheme === 'dark' || (!currentTheme && prefersDarkScheme.matches)) {
+                document.body.classList.add('dark-theme');
+                themeToggle.checked = true;
+            }
+            
+            // Toggle theme on switch change
+            themeToggle.addEventListener('change', function() {
+                if (this.checked) {
+                    document.body.classList.add('dark-theme');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.body.classList.remove('dark-theme');
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+        }
+        
         // Initialize the dashboard
         function initDashboard() {
+            // Set up theme toggle
+            setupThemeToggle();
+            
             // Set up button event listeners
             signInBtn.addEventListener('click', () => {
                 loginSection.style.display = 'block';
