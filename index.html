@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Clicker Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-analytics.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #0f0c29, #302b63, #24243e);
+            color: #fff;
+        }
+        
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 25, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.5s ease;
+        }
+        
+        .loader-container {
+            text-align: center;
+            padding: 30px;
+            border-radius: 20px;
+            background: rgba(30, 30, 50, 0.7);
+            box-shadow: 0 0 40px rgba(114, 9, 183, 0.6);
+            max-width: 90%;
+        }
+        
+        .loader-title {
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            background: linear-gradient(90deg, #f72585, #7209b7, #3a0ca3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+        }
+        
+        .loader-bar-wrap {
+            width: 300px;
+            height: 16px;
+            background: #22223b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px auto;
+        }
+        
+        .loader-bar {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #f72585, #7209b7);
+            border-radius: 10px;
+            animation: loading 3s ease-in-out forwards;
+        }
+        
+        @keyframes loading {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        
+        #authMenu, #usernamePrompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: rgba(10, 10, 25, 0.95);
+            z-index: 900;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+        
+        .auth-box {
+            background: rgba(30, 30, 50, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(114, 9, 183, 0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .auth-title {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #f72585, #7209b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .auth-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 15px 0;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(90deg, #4a00e0, #8e2de2);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        #usernameInput {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            border: 2px solid #4a00e0;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        #usernameInput:focus {
+            outline: none;
+            border-color: #f72585;
+            box-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+        }
+        
+        #saveUsernameBtn {
+            background: linear-gradient(90deg, #f72585, #7209b7);
+        }
+        
+        #saveUsernameBtn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .suggestions {
+            margin-top: 10px;
+            color: #b19dff;
+            font-size: 0.9rem;
+        }
+        
+        .suggestion-list {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .suggestion {
+            padding: 5px 10px;
+            background: rgba(74, 0, 224, 0.3);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .suggestion:hover {
+            background: rgba(247, 37, 133, 0.4);
+            transform: scale(1.05);
+        }
+        
+        #headerBar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(to right, rgba(20, 20, 40, 0.9), rgba(40, 20, 60, 0.9));
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 50;
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        #headerBar.hidden {
+            transform: translateY(-100%);
+        }
+        
+        .score-section {
+            display: flex;
+            gap: 25px;
+            font-size: 1.2rem;
+        }
+        
+        .score-value {
+            color: #4facfe;
+            font-weight: bold;
+            font-size: 1.3rem;
+            text-shadow: 0 0 8px rgba(79, 172, 254, 0.5);
+        }
+        
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding-right: 60px;
+        }
+        
+        #usernameWrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 15px;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #usernameWrapper:hover {
+            background: rgba(74, 0, 224, 0.3);
+        }
+        
+        #usernameLabel {
+            color: #9d8dff;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        #userProfileAvatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            object-fit: cover;
+            display: none;
+        }
+        
+        #defaultProfileSvgContainer {
+            width: 26px;
+            height: 26px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #defaultProfileSvg {
+            width: 24px;
+            height: 24px;
+            fill: #b19dff;
+            vertical-align: middle;
+            transition: fill 0.3s ease;
+        }
+        
+        #usernameWrapper:hover #defaultProfileSvg {
+            fill: #f72585;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        .combo-notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 20;
+            pointer-events: none;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .combo-notification {
+            background: rgba(30, 30, 50, 0.85);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid #f72585;
+            border-radius: 8px;
+            padding: 16px 24px;
+            min-width: 200px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.4s ease-out forwards, fadeOut 0.4s ease-out var(--notification-duration) forwards;
+            transform: translateX(120%);
+            opacity: 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .combo-notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #f72585, #7209b7);
+            animation: progress var(--notification-duration) linear forwards;
+        }
+        
+        .combo-notification.combo {
+            border-left-color: #ffcc00;
+        }
+        
+        .combo-notification.combo::before {
+            background: linear-gradient(90deg, #ffcc00, #ff9500);
+        }
+        
+        .combo-notification.level-up {
+            border-left-color: #00ffcc;
+        }
+        
+        .combo-notification.level-up::before {
+            background: linear-gradient(90deg, #00ffcc, #00b3ff);
+        }
+
+        .combo-notification.reset {
+            border-left-color: #ff0000;
+        }
+        .combo-notification.reset::before {
+            background: linear-gradient(90deg, #ff0000, #ff6b6b);
+        }
+
+        .rainbow-text {
+            background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbowGradientText 4s linear infinite;
+            background-size: 200% 100%;
+        }
+
+        @keyframes rainbowGradientText {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
+        }
+        
+        .text-color-10 { color: #00ff00; }
+        .text-color-20 { color: #00ffff; }
+        .text-color-30 { color: #0000ff; }
+        .text-color-40 { color: #ff00ff; }
+        .text-color-50 { color: #ff0000; }
+        .text-color-60 { color: #ffa500; }
+        .text-color-70 { color: #ffff00; }
+        .text-color-80 { color: #800080; }
+        .text-color-90 { color: #008000; }
+        .text-default { color: #ffcc00; }
+        
+        .combo-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .combo-title i {
+            font-size: 1.3rem;
+        }
+        
+        .combo-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 8px 0;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .combo-message {
+            font-size: 1rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(120%); opacity: 0; }
+        }
+        
+        @keyframes progress {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
+        
+        #headerToggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(30, 30, 50, 0.7);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+        }
+        
+        #headerToggle:hover {
+            transform: scale(1.1);
+            background: rgba(74, 0, 224, 0.5);
+        }
+        
+        #toggleIcon {
+            color: #9d8dff;
+            font-size: 24px;
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        
+        #headerToggle.rotated #toggleIcon {
+            transform: rotate(180deg);
+        }
+        
+        .firebase-info {
+            position: fixed;
+            bottom: 15px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #b19dff;
+            font-size: 0.85rem;
+            z-index: 10;
+        }
+        #authStatus {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #b19dff;
+            word-break: break-all;
+            text-align: center;
+            background: rgba(30, 30, 50, 0.7);
+            padding: 10px 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            margin-left: auto;
+            margin-right: auto;
+            display: block;
+        }
+        
+        .error-message {
+            background-color: #f44336; 
+            color: white; 
+            padding: 10px; 
+            margin-top: 10px; 
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .score-section {
+                flex-direction: column;
+                gap: 8px;
+                font-size: 0.9rem;
+            }
+            
+            .score-value {
+                font-size: 1rem;
+            }
+            
+            #usernameLabel {
+                font-size: 1rem;
+            }
+            
+            .auth-box {
+                padding: 25px;
+            }
+            
+            .auth-title {
+                font-size: 1.5rem;
+            }
+            
+            #headerToggle {
+                top: 15px;
+                right: 15px;
+                width: 35px;
+                height: 35px;
+            }
+            
+            .combo-notification-container {
+                top: 80px;
+                right: 15px;
+            }
+            
+            .combo-notification {
+                min-width: 160px;
+                padding: 10px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay">
+        <div class="loader-container">
+            <div class="loader-title"><i class="fas fa-gamepad"></i> Screen Clicker Pro</div>
+            <div class="loader-bar-wrap">
+                <div class="loader-bar"></div>
+            </div>
+            <p style="margin-top: 20px; color: #b19dff;">Chargement en cours...</p>
+        </div>
+    </div>
+    
+    <div id="authMenu">
+        <div class="auth-box">
+            <div class="auth-title">Screen Clicker Pro</div>
+            <p style="color: #d0d0ff; margin-bottom: 30px;">Cliquez pour marquer des points et battre les records!</p>
+            <button id="signInAnonBtn" class="auth-btn">Jouer en anonyme</button>
+            <button id="showSignupPageBtn" class="auth-btn">S'inscrire</button>
+            <button id="showLoginPageBtn" class="auth-btn">Se Connecter</button>
+        </div>
+    </div>
+    
+    <div id="usernamePrompt">
+        <div class="auth-box">
+            <div class="auth-title">Choisissez votre pseudo</div>
+            <input id="usernameInput" type="text" placeholder="Votre pseudo (a-z, 0-9, _-)" maxlength="20" />
+            <div id="usernameError" style="color: #ff6b6b; margin: 10px 0; min-height: 24px;"></div>
+            <div id="suggestions" class="suggestions" style="display: none;">
+                Ce pseudo existe déjà. Suggestions:
+                <div id="suggestionList" class="suggestion-list"></div>
+            </div>
+            <button id="saveUsernameBtn" class="auth-btn" disabled>Commencer à jouer</button>
+        </div>
+    </div>
+    
+    <div id="headerToggle">
+        <i id="toggleIcon" class="fas fa-caret-down"></i>
+    </div>
+    
+    <div id="headerBar" class="hidden">
+        <div class="score-section">
+            <div>Score: <span id="score" class="score-value">0</span></div>
+            <div>Votre Record: <span id="playerHighscore" class="score-value">0</span></div>
+            <div>Combo: <span id="combo" class="score-value">0x</span></div>
+        </div>
+        <div class="user-section">
+            <div id="usernameWrapper">
+                <img id="userProfileAvatar" src="" alt="Avatar utilisateur">
+                <div id="defaultProfileSvgContainer">
+                    <svg id="defaultProfileSvg" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <g data-name="Layer 2" id="Layer_2">
+                            <path d="m15.626 11.769a6 6 0 1 0 -7.252 0 9.008 9.008 0 0 0 -5.374 8.231 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 9.008 9.008 0 0 0 -5.374-8.231zm-7.626-4.769a4 4 0 1 1 4 4 4 4 0 0 1 -4-4zm10 14h-12a1 1 0 0 1 -1-1 7 7 0 0 1 14 0 1 1 0 0 1 -1 1z"></path>
+                        </g>
+                    </svg>
+                </div>
+                <span id="usernameLabel">Joueur</span>
+                </div>
+        </div>
+    </div>
+    
+    <div class="combo-notification-container" id="notificationContainer"></div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <div id="authStatus">Statut d'authentification: En attente...</div>
+
+    <div class="firebase-info">
+        Connecté à Firebase | Score sauvegardé dans Firestore
+    </div>
+
+    <script type="module">
+        // Configuration Firebase corrigée
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5y97C6OC5HLMB9WkdII5PpUOsfFtdqgk",
+            authDomain: "screen-clicker-2010.firebaseapp.com",
+            projectId: "screen-clicker-2010",
+            storageBucket: "screen-clicker-2010.appspot.com", // Corrigé
+            messagingSenderId: "47509252596",
+            appId: "1:47509252596:web:b9e49f5b0ca9ff6b8a71a1",
+            measurementId: "G-WF9SYRQBVT"
+        };
+
+        // Initialiser Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(app); 
+        const db = firebase.firestore(app); 
+        const analytics = firebase.analytics(app); 
+
+        // Game state
+        let playerId = null;
+        let playerName = "Joueur";
+        let playerHighscore = 0;
+        let score = 0;
+        let comboCount = 0;
+        let lastClickTime = 0;
+        const comboTimeout = 500;
+        let hue = 0;
+        let circles = [];
+        let particles = [];
+        
+        // Références DOM
+        let overlay, authMenu, usernamePrompt, signInAnonBtn, saveBtn;
+        let usernameInput, usernameError, suggestionsDiv, suggestionList;
+        let canvas, ctx, scoreEl, playerHsEl, comboEl;
+        let header, usernameLabel, headerToggle, toggleIcon;
+        let notificationContainer, userProfileAvatar, defaultProfileSvgContainer;
+        let authStatusDiv;
+
+        // --- Fonctions utilitaires ---
+        function displayError(message) {
+            if (notificationContainer) { 
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message'; 
+                errorDiv.textContent = message;
+                notificationContainer.appendChild(errorDiv);
+                setTimeout(() => errorDiv.remove(), 5000); 
+            }
+        }
+        
+        // --- Gestion des visiteurs CORRIGÉE ---
+        async function trackVisitor() {
+            try {
+                // Vérifier si le visiteur est nouveau
+                const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+                const isReturn = !!hasVisitedBefore;
+                
+                // Créer un ID visiteur s'il n'existe pas
+                let visitorId = localStorage.getItem('visitorId');
+                if (!visitorId) {
+                    visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    localStorage.setItem('visitorId', visitorId);
+                }
+                
+                // Marquer comme ayant visité
+                localStorage.setItem('hasVisitedBefore', 'true');
+                
+                // Préparer les données du visiteur
+                const visitorData = {
+                    id: visitorId,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    isReturn: isReturn,
+                    userAgent: navigator.userAgent,
+                    screen: `${window.screen.width}x${window.screen.height}`,
+                    language: navigator.language,
+                    date: new Date().toISOString().split('T')[0] // Pour faciliter les requêtes
+                };
+                
+                // CORRECTION: Utilisation de set avec merge pour éviter les erreurs
+                await db.collection('visitors').doc(visitorId).set(visitorData);
+                
+                // Envoyer l'événement à Analytics
+                analytics.logEvent('visit_tracked', {
+                    visitor_id: visitorId,
+                    is_return: isReturn
+                });
+                
+            } catch (error) {
+                console.error("Erreur suivi visiteur:", error);
+                // Ne pas afficher d'erreur pour l'utilisateur
+            }
+        }
+
+        // --- Gestion utilisateur CORRIGÉE ---
+        async function createOrUpdateUserProfile(user, username = null, initialHighscore = 0) {
+            const userRef = db.collection('users').doc(user.uid); 
+            try {
+                const docSnap = await userRef.get();
+                let currentUsername = username;
+                let photoURL = user.photoURL || null;
+
+                if (!docSnap.exists) { 
+                    if (!currentUsername) { 
+                        currentUsername = user.displayName || user.email?.split('@')[0] || 'Joueur' + user.uid.substring(0, 6);
+                    }
+                    const userData = {
+                        un: currentUsername, 
+                        hs: initialHighscore,               
+                        av: photoURL,        
+                        ea: user.providerData.some(p => p.providerId === 'password'),
+                        ga: user.providerData.some(p => p.providerId === 'google.com'),
+                        ia: user.isAnonymous, 
+                        ca: firebase.firestore.FieldValue.serverTimestamp(),
+                        lp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await userRef.set(userData);
+                    playerName = userData.un;
+                    playerHighscore = userData.hs;
+                    updateAvatarDisplay(userData.av); 
+                    setupGame();
+                } else { 
+                    const existingData = docSnap.data();
+                    await userRef.update({ lp: firebase.firestore.FieldValue.serverTimestamp() });
+                    playerName = existingData.un || 'Joueur' + user.uid.substring(0, 6);
+                    playerHighscore = existingData.hs || 0;
+                    updateAvatarDisplay(existingData.av); 
+                    setupGame();
+                }
+            } catch (error) {
+                console.error("Erreur profil:", error);
+                displayError(`Erreur de profil: ${error.message}`);
+                showAuthMenu(); 
+            }
+        }
+
+        function updateAvatarDisplay(avatarUrl) {
+            if (userProfileAvatar && defaultProfileSvgContainer) { 
+                if (avatarUrl) {
+                    userProfileAvatar.src = avatarUrl;
+                    userProfileAvatar.style.display = 'block';
+                    defaultProfileSvgContainer.style.display = 'none';
+                } else {
+                    userProfileAvatar.style.display = 'none';
+                    defaultProfileSvgContainer.style.display = 'flex'; 
+                }
+            }
+        }
+
+        // --- Fonctions jeu ---
+        function showAuthMenu() {
+            if (authMenu && usernamePrompt) { 
+                authMenu.style.display = 'flex';
+                usernamePrompt.style.display = 'none';
+            }
+        }
+        
+        function showUsernamePrompt() {
+            if (authMenu && usernamePrompt) { 
+                authMenu.style.display = 'none';
+                usernamePrompt.style.display = 'flex';
+                usernameInput.value = ''; 
+                saveBtn.disabled = true; 
+                usernameError.textContent = ''; 
+                suggestionsDiv.style.display = 'none'; 
+            }
+        }
+
+        async function doesUsernameExist(username) {
+            try {
+                const snapshot = await db.collection('users').where('un', '==', username).get();
+                return !snapshot.empty;
+            } catch (error) {
+                console.error("Erreur vérification pseudo:", error);
+                displayError("Erreur lors de la vérification du pseudo.");
+                return true; 
+            }
+        }
+
+        function generateSuggestions(baseUsername) {
+            return Array(3).fill().map(() => 
+                `${baseUsername}_${Math.floor(Math.random() * 900) + 100}`
+            );
+        }
+
+        async function createUserProfileAndGame(name) {
+            const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+            if (!usernameRegex.test(name)) {
+                usernameError.textContent = 'Caractères invalides (3-20 caractères).';
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            saveBtn.disabled = true; 
+            saveBtn.textContent = 'Vérification...';
+
+            try {
+                if (await doesUsernameExist(name)) {
+                    usernameError.textContent = 'Pseudo déjà utilisé.';
+                    const suggestions = generateSuggestions(name);
+                    suggestionList.innerHTML = ''; 
+                    suggestions.forEach(sugg => {
+                        const span = document.createElement('span');
+                        span.className = 'suggestion';
+                        span.textContent = sugg;
+                        span.addEventListener('click', () => {
+                            usernameInput.value = sugg;
+                            saveBtn.disabled = false; 
+                            usernameError.textContent = '';
+                            suggestionsDiv.style.display = 'none';
+                        });
+                        suggestionList.appendChild(span);
+                    });
+                    suggestionsDiv.style.display = 'block';
+                    saveBtn.disabled = false; 
+                    saveBtn.textContent = 'Commencer à jouer';
+                    return; 
+                }
+
+                playerName = name;
+                playerId = user.uid; 
+                await createOrUpdateUserProfile(user, playerName, 0); 
+                localStorage.setItem('playerName', playerName);
+                localStorage.setItem('playerId', playerId); 
+                usernamePrompt.style.display = 'none';
+            } catch (error) {
+                console.error("Erreur création profil:", error);
+                displayError("Erreur de création de profil.");
+                saveBtn.disabled = false; 
+                saveBtn.textContent = 'Commencer à jouer';
+            }
+        }
+        
+        function setupGame() {
+            if (usernameLabel && playerHsEl && canvas) {
+                usernameLabel.textContent = playerName;
+                playerHsEl.textContent = playerHighscore;
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gameLoop();
+            } else {
+                console.error("Éléments DOM manquants pour l'initialisation du jeu");
+            }
+        }
+        
+        function getCircleColor(combo) {
+            if (combo >= 100) {
+                hue = (hue + 5) % 360;
+                return `hsl(${hue}, 100%, 60%)`;
+            }
+            
+            const palier = Math.floor(combo / 10);
+            
+            switch(palier) {
+                case 1: return '#00ff00';
+                case 2: return '#00ffff';
+                case 3: return '#0000ff';
+                case 4: return '#ff00ff';
+                case 5: return '#ff0000';
+                case 6: return '#ffa500';
+                case 7: return '#ffff00';
+                case 8: return '#800080';
+                case 9: return '#008000';
+                default: 
+                    const defaultColors = ['#ff6b6b', '#4ecdc4', '#ffbe0b'];
+                    return defaultColors[Math.min(combo, defaultColors.length-1)];
+            }
+        }
+        
+        function drawGame() {
+            if (!ctx || !canvas) {
+                console.error("Canvas ou contexte non disponible");
+                return;
+            }
+            
+            hue = (hue + 0.2) % 360;
+            ctx.fillStyle = `hsl(${hue}, 60%, 10%)`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            if (comboCount >= 10) {
+                for (let i = 0; i < 2; i++) {
+                    const x = Math.random() * canvas.width;
+                    const y = Math.random() * canvas.height;
+                    const size = Math.random() * 3 + 1;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    
+                    const particleHue = (hue + 120) % 360;
+                    ctx.fillStyle = `hsla(${particleHue}, 100%, 70%, ${0.2 + (comboCount/200)})`;
+                    ctx.fill();
+                }
+            }
+            
+            circles.forEach((circle, idx) => {
+                const circleColor = getCircleColor(comboCount);
+                ctx.beginPath();
+                ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI*2);
+                
+                ctx.lineWidth = 3 + (comboCount / 10);
+                ctx.strokeStyle = circleColor;
+                
+                if (circle.radius > 15) {
+                    ctx.shadowColor = circleColor;
+                    ctx.shadowBlur = 15 + comboCount;
+                }
+                
+                ctx.stroke();
+                ctx.closePath();
+                ctx.shadowBlur = 0;
+                
+                circle.radius += 1 + (comboCount / 20);
+                circle.age += 1;
+                
+                if (circle.radius >= 50) {
+                    createExplosion(circle.x, circle.y, circleColor);
+                    circles.splice(idx, 1);
+                }
+            });
+            
+            particles.forEach((p, idx) => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 100;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.05;
+                p.life -= 2;
+                p.radius = Math.max(0, p.radius - 0.1);
+                
+                if (p.life <= 0 || p.radius <= 0) {
+                    particles.splice(idx, 1);
+                }
+            });
+        }
+        
+        function createExplosion(x, y, color) {
+            const particleCount = 20 + Math.floor(comboCount / 2);
+            for (let i = 0; i < particleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3 * (comboCount / 10);
+                particles.push({
+                    x, y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 2 + Math.random() * 4,
+                    color,
+                    life: 100
+                });
+            }
+        }
+        
+        function createCircle(x, y) {
+            circles.push({ x, y, radius: 5, age: 0 });
+        }
+        
+        function showComboNotification(combo) {
+            if (!notificationContainer) return;
+            
+            const notification = document.createElement('div');
+            notification.className = 'combo-notification'; 
+            
+            let title = "COMBO!";
+            let message = `x${combo}`; 
+            let comboClass = 'combo'; 
+            let textColorClass = 'text-default'; 
+
+            const duration = Math.min(3000, 500 + combo * 100);
+            notification.style.setProperty('--notification-duration', `${duration}ms`);
+            
+            if (combo % 10 === 0 && combo > 0) { 
+                comboClass = 'level-up';
+                
+                switch(combo) {
+                    case 10: title = "COMBO DE 10!"; message = "Couleur verte activée!"; textColorClass = 'text-color-10'; break;
+                    case 20: title = "COMBO DE 20!"; message = "Couleur cyan activée!"; textColorClass = 'text-color-20'; break;
+                    case 30: title = "COMBO DE 30!"; message = "Couleur bleue activée!"; textColorClass = 'text-color-30'; break;
+                    case 40: title = "COMBO DE 40!"; message = "Couleur magenta activée!"; textColorClass = 'text-color-40'; break;
+                    case 50: title = "COMBO DE 50!"; message = "Couleur rouge activée!"; textColorClass = 'text-color-50'; break;
+                    case 60: title = "COMBO DE 60!"; message = "Couleur orange activée!"; textColorClass = 'text-color-60'; break;
+                    case 70: title = "COMBO DE 70!"; message = "Couleur jaune activée!"; textColorClass = 'text-color-70'; break;
+                    case 80: title = "COMBO DE 80!"; message = "Couleur violette activée!"; textColorClass = 'text-color-80'; break;
+                    case 90: title = "COMBO DE 90!"; message = "Couleur vert foncé activée!"; textColorClass = 'text-color-90'; break;
+                    default: title = `COMBO DE ${combo}!`; message = "Nouvelle couleur débloquée!";
+                }
+            }
+            
+            if (combo >= 100) {
+                textColorClass = 'rainbow-text';
+                title = "ULTRA COMBO!";
+                message = "Effet arc-en-ciel activé!";
+                comboClass = 'level-up';
+            }
+
+            notification.classList.add(comboClass);
+            notification.innerHTML = `
+                <div class="combo-title ${textColorClass}">
+                    <i class="fas fa-bolt"></i>
+                    <span>${title}</span>
+                </div>
+                <div class="combo-value ${textColorClass}">x${combo}</div>
+                <div class="combo-message">${message}</div>
+            `;
+            
+            notificationContainer.appendChild(notification);
+            setTimeout(() => notification.remove(), duration);
+        }
+
+        function showComboResetNotification() {
+            if (!notificationContainer) return;
+            
+            const notification = document.createElement('div');
+            notification.className = 'combo-notification reset';
+            const duration = 2000;
+            notification.style.setProperty('--notification-duration', `${duration}ms`);
+
+            notification.innerHTML = `
+                <div class="combo-title">
+                    <i class="fas fa-redo-alt"></i>
+                    <span>COMBO PERDU!</span>
+                </div>
+                <div class="combo-message">Cliquez plus rapidement!</div>
+            `;
+
+            notificationContainer.appendChild(notification);
+            setTimeout(() => notification.remove(), duration);
+        }
+        
+        async function handleClick(event) {
+            if (!canvas || !scoreEl || !comboEl || !playerHsEl) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const now = Date.now(); 
+            
+            if (lastClickTime > 0) {
+                const timeDiff = now - lastClickTime;
+                
+                if (timeDiff > comboTimeout) {
+                    if (comboCount > 0) {
+                        showComboResetNotification();
+                    }
+                    comboCount = 0;
+                }
+            }
+            
+            comboCount++;
+            lastClickTime = now;
+            comboEl.textContent = comboCount + 'x';
+            
+            if (comboCount % 10 === 0) {
+                showComboNotification(comboCount);
+            }
+            
+            score += comboCount;
+            scoreEl.textContent = score;
+            createCircle(x, y);
+            
+            if (score > playerHighscore) {
+                playerHighscore = score;
+                playerHsEl.textContent = playerHighscore;
+                await saveScore();
+            }
+        }
+        
+        async function saveScore() {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            try {
+                await db.collection('users').doc(user.uid).update({
+                    hs: playerHighscore, 
+                    lp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Erreur sauvegarde score:", error);
+            }
+        }
+        
+        function gameLoop() {
+            if (ctx && canvas) {
+                drawGame();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function toggleHeader() {
+            if (header && headerToggle) {
+                header.classList.toggle('hidden');
+                headerToggle.classList.toggle('rotated');
+            }
+        }
+        
+        function setupEventListeners() {
+            if (signInAnonBtn) signInAnonBtn.addEventListener('click', async () => {
+                try {
+                    if (authMenu) authMenu.style.display = 'none';
+                    if (overlay) overlay.style.display = 'flex';
+                    await auth.signInAnonymously();
+                } catch (error) {
+                    displayError("Erreur connexion anonyme.");
+                    if (authMenu) authMenu.style.display = 'flex';
+                    if (overlay) overlay.style.display = 'none';
+                }
+            });
+
+            if (document.getElementById('showSignupPageBtn')) {
+                document.getElementById('showSignupPageBtn').addEventListener('click', () => {
+                    window.location.href = 'signup.html';
+                });
+            }
+            
+            if (document.getElementById('showLoginPageBtn')) {
+                document.getElementById('showLoginPageBtn').addEventListener('click', () => {
+                    window.location.href = 'login.html';
+                });
+            }
+            
+            if (document.getElementById('usernameWrapper')) {
+                document.getElementById('usernameWrapper').addEventListener('click', () => {
+                    window.location.href = 'profile.html';
+                });
+            }
+
+            if (canvas) canvas.addEventListener('click', handleClick);
+            if (headerToggle) headerToggle.addEventListener('click', toggleHeader);
+            
+            window.addEventListener('resize', () => {
+                if (canvas) {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                }
+            });
+
+            if (saveBtn) saveBtn.addEventListener('click', () => {
+                const name = usernameInput.value.trim();
+                if (name) createUserProfileAndGame(name);
+            });
+            
+            if (usernameInput) {
+                usernameInput.addEventListener('input', () => {
+                    const name = usernameInput.value.trim();
+                    if (saveBtn) saveBtn.disabled = name === '';
+                    if (name && usernameError) {
+                        usernameError.textContent = ''; 
+                        if (suggestionsDiv) suggestionsDiv.style.display = 'none'; 
+                    }
+                });
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            overlay = document.getElementById('loadingOverlay');
+            authMenu = document.getElementById('authMenu');
+            usernamePrompt = document.getElementById('usernamePrompt');
+            signInAnonBtn = document.getElementById('signInAnonBtn'); 
+            saveBtn = document.getElementById('saveUsernameBtn');
+            usernameInput = document.getElementById('usernameInput');
+            usernameError = document.getElementById('usernameError');
+            suggestionsDiv = document.getElementById('suggestions');
+            suggestionList = document.getElementById('suggestionList');
+            
+            canvas = document.getElementById('canvas');
+            
+            if (canvas) {
+                ctx = canvas.getContext('2d');
+            }
+            
+            scoreEl = document.getElementById('score');
+            playerHsEl = document.getElementById('playerHighscore');
+            comboEl = document.getElementById('combo');
+            header = document.getElementById('headerBar');
+            usernameLabel = document.getElementById('usernameLabel');
+            headerToggle = document.getElementById('headerToggle');
+            notificationContainer = document.getElementById('notificationContainer');
+            userProfileAvatar = document.getElementById('userProfileAvatar');
+            defaultProfileSvgContainer = document.getElementById('defaultProfileSvgContainer');
+            authStatusDiv = document.getElementById('authStatus'); 
+
+            setupEventListeners();
+
+            auth.onAuthStateChanged(async (user) => { 
+                if (authStatusDiv) {
+                    if (user) {
+                        authStatusDiv.textContent = `Connecté: ${user.uid.substring(0, 8)}...`;
+                        if (authMenu) authMenu.style.display = 'none'; 
+                        
+                        try {
+                            const userDoc = await db.collection('users').doc(user.uid).get();
+                            if (user.isAnonymous && !userDoc.exists) {
+                                showUsernamePrompt();
+                            } else {
+                                await createOrUpdateUserProfile(user); 
+                            }
+                        } catch (error) {
+                            console.error("Erreur auth state:", error);
+                        }
+
+                        if (signInAnonBtn) signInAnonBtn.disabled = true;
+                    } else {
+                        authStatusDiv.textContent = 'Déconnecté';
+                        playerName = "Joueur";
+                        playerHighscore = score = comboCount = lastClickTime = 0;
+                        if (usernameLabel) usernameLabel.textContent = playerName;
+                        if (playerHsEl) playerHsEl.textContent = playerHighscore;
+                        if (scoreEl) scoreEl.textContent = score;
+                        if (comboEl) comboEl.textContent = "0x";
+                        showAuthMenu(); 
+                        if (signInAnonBtn) signInAnonBtn.disabled = false;
+                    }
+                }
+                
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        if (overlay) overlay.style.display = 'none';
+                    }, 300);
+                }
+            });
+            
+            // Suivi du visiteur - corrigé
+            trackVisitor();
+        });
+    </script>
+</body>
+</html>

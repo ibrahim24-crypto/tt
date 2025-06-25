@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Clicker Pro - Classement</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        /* Styles généraux */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background: radial-gradient(circle at center, #0f0c29, #302b63, #24243e);
+            color: #fff;
+        }
+        
+        /* Leaderboard Container */
+        .leaderboard-container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            background: rgba(30, 30, 50, 0.5);
+            border-radius: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .leaderboard-item:hover {
+            transform: translateX(5px);
+            background: rgba(74, 0, 224, 0.3);
+        }
+        
+        .rank {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(90deg, #4a00e0, #8e2de2);
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .top-3 .rank {
+            font-size: 1.3rem;
+        }
+        
+        .rank-1 .rank {
+            background: linear-gradient(90deg, #ffcc00, #ff9500);
+        }
+        
+        .rank-2 .rank {
+            background: linear-gradient(90deg, #c0c0c0, #a0a0a0);
+        }
+        
+        .rank-3 .rank {
+            background: linear-gradient(90deg, #cd7f32, #a65e00);
+        }
+        
+        .user-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(30, 30, 50, 0.7);
+            border: 2px solid #4a00e0;
+            /* Correction: Centrer le contenu */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* Correction: Centrer l'icône SVG */
+        .user-avatar svg {
+            width: 70%; /* Taille réduite pour mieux s'intégrer */
+            height: 70%; /* Taille réduite pour mieux s'intégrer */
+            fill: #b19dff; /* Couleur cohérente */
+        }
+        
+        .user-score {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #4facfe;
+            text-shadow: 0 0 8px rgba(79, 172, 254, 0.5);
+        }
+        
+        .leaderboard-actions {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .action-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(90deg, #f72585, #7209b7);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .action-btn:active {
+            transform: translateY(1px);
+        }
+        
+        /* Animation de chargement */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 20px;
+        }
+        
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #b19dff;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .leaderboard-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .leaderboard-item {
+                padding: 10px;
+            }
+            
+            .user-info {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-container">
+        <div class="leaderboard-header">
+            <h1><i class="fas fa-trophy"></i> Classement des Joueurs</h1>
+            <button class="action-btn" id="backToGameBtn">
+                <i class="fas fa-gamepad"></i> Retour au jeu
+            </button>
+        </div>
+        
+        <ul class="leaderboard-list" id="leaderboardList">
+            <li class="leaderboard-item">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <span>Chargement du classement...</span>
+                </div>
+            </li>
+        </ul>
+        
+        <div class="leaderboard-actions">
+            <button class="action-btn" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Actualiser
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5y97C6OC5HLMB9WkdII5PpUOsfFtdqgk",
+            authDomain: "screen-clicker-2010.firebaseapp.com",
+            projectId: "screen-clicker-2010",
+            storageBucket: "screen-clicker-2010.firebasestorage.app",
+            messagingSenderId: "47509252596",
+            appId: "1:47509252596:web:b9e49f5b0ca9ff6b8a71a1",
+            measurementId: "G-WF9SYRQBVT"
+        };
+
+        // Initialiser Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app); 
+
+        // Références DOM
+        const leaderboardList = document.getElementById('leaderboardList');
+        const backToGameBtn = document.getElementById('backToGameBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+
+        // Charger le classement
+        async function loadLeaderboard() {
+            leaderboardList.innerHTML = `
+                <li class="leaderboard-item">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <span>Chargement du classement...</span>
+                    </div>
+                </li>
+            `;
+            
+            try {
+                const snapshot = await db.collection('users')
+                    .orderBy('hs', 'desc')
+                    .limit(10)
+                    .get();
+                
+                leaderboardList.innerHTML = '';
+                
+                let rank = 1;
+                snapshot.forEach(doc => {
+                    const userData = doc.data();
+                    const listItem = document.createElement('li');
+                    listItem.className = 'leaderboard-item';
+                    
+                    if (rank === 1) listItem.classList.add('rank-1');
+                    if (rank === 2) listItem.classList.add('rank-2');
+                    if (rank === 3) listItem.classList.add('rank-3');
+                    
+                    if (rank <= 3) listItem.classList.add('top-3');
+                    
+                    listItem.innerHTML = `
+                        <div class="rank">${rank}</div>
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                ${userData.av ? 
+                                    `<img src="${userData.av}" alt="${userData.un}">` : 
+                                    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                        <path d="m15.626 11.769a6 6 0 1 0 -7.252 0 9.008 9.008 0 0 0 -5.374 8.231 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 9.008 9.008 0 0 0 -5.374-8.231zm-7.626-4.769a4 4 0 1 1 4 4 4 4 0 0 1 -4-4zm10 14h-12a1 1 0 0 1 -1-1 7 7 0 0 1 14 0 1 1 0 0 1 -1 1z"></path>
+                                    </svg>`
+                                }
+                            </div>
+                            <div class="user-name">${userData.un || 'Joueur'}</div>
+                        </div>
+                        <div class="user-score">${userData.hs || 0}</div>
+                    `;
+                    
+                    leaderboardList.appendChild(listItem);
+                    rank++;
+                });
+                
+                // Si aucun résultat
+                if (rank === 1) {
+                    leaderboardList.innerHTML = `
+                        <li class="leaderboard-item">
+                            <div style="text-align: center; width: 100%; padding: 20px;">
+                                Aucun joueur dans le classement pour le moment
+                            </div>
+                        </li>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error("Erreur de chargement du classement:", error);
+                leaderboardList.innerHTML = `
+                    <li class="leaderboard-item">
+                        <div style="text-align: center; width: 100%; padding: 20px; color: #ff6b6b;">
+                            Erreur de chargement du classement
+                        </div>
+                    </li>
+                `;
+            }
+        }
+
+        // Gestion des événements
+        backToGameBtn.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+        
+        refreshBtn.addEventListener('click', () => {
+            loadLeaderboard();
+        });
+        
+        // Initialisation
+        loadLeaderboard();
+    </script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Clicker Pro - Connexion</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-analytics.js"></script>
+    <style>
+        /* Styles généraux */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #0f0c29, #302b63, #24243e);
+            color: #fff;
+        }
+        
+        /* Auth Container */
+        #authContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            background: rgba(10, 10, 25, 0.95);
+            z-index: 900;
+            backdrop-filter: blur(10px);
+        }
+        
+        .auth-box {
+            background: rgba(30, 30, 50, 0.8);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(114, 9, 183, 0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .auth-title {
+            font-size: 2rem;
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, #f72585, #7209b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .auth-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 15px 0;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(90deg, #4a00e0, #8e2de2);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        .auth-btn:active {
+            transform: translateY(1px);
+        }
+        
+        .google-btn {
+            background: linear-gradient(90deg, #4285F4, #34A853, #FBBC05, #EA4335);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #4a00e0;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #f72585;
+            box-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+        }
+        
+        .login-options {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        
+        .login-options a {
+            color: #b19dff;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .login-options a:hover {
+            color: #f72585;
+        }
+        
+        .error-message {
+            color: #ff6b6b;
+            margin: 10px 0;
+            min-height: 24px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .auth-box {
+                padding: 25px;
+            }
+            
+            .auth-title {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .login-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="authContainer">
+        <div class="auth-box">
+            <div class="auth-title"><i class="fas fa-gamepad"></i> Screen Clicker Pro</div>
+            <p style="color: #d0d0ff; margin-bottom: 30px;">Connectez-vous pour accéder à votre compte</p>
+            
+            <form id="loginForm">
+                <input type="email" id="email" class="form-input" placeholder="Email" required>
+                <input type="password" id="password" class="form-input" placeholder="Mot de passe" required>
+                <div id="loginError" class="error-message"></div>
+                <button type="submit" id="signInBtn" class="auth-btn">Se connecter</button>
+                <button type="button" id="signInGoogleBtn" class="auth-btn google-btn">
+                    <i class="fab fa-google"></i> Connexion avec Google
+                </button>
+            </form>
+            
+            <div class="login-options">
+                <a href="signup.html">Créer un compte</a>
+                <a href="index.html">Retour au jeu</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5y97C6OC5HLMB9WkdII5PpUOsfFtdqgk",
+            authDomain: "screen-clicker-2010.firebaseapp.com",
+            projectId: "screen-clicker-2010",
+            storageBucket: "screen-clicker-2010.firebasestorage.app",
+            messagingSenderId: "47509252596",
+            appId: "1:47509252596:web:b9e49f5b0ca9ff6b8a71a1",
+            measurementId: "G-WF9SYRQBVT"
+        };
+
+        // Initialiser Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth(app); 
+        const db = firebase.firestore(app); 
+        const analytics = firebase.analytics(app); 
+
+        // Références DOM
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const signInBtn = document.getElementById('signInBtn');
+        const signInGoogleBtn = document.getElementById('signInGoogleBtn');
+        const loginError = document.getElementById('loginError');
+
+        // Connexion avec email/mot de passe
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            try {
+                signInBtn.disabled = true;
+                loginError.textContent = '';
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error("Erreur de connexion:", error);
+                loginError.textContent = error.message;
+                signInBtn.disabled = false;
+            }
+        });
+
+        // Connexion avec Google
+        signInGoogleBtn.addEventListener('click', async () => {
+            try {
+                signInGoogleBtn.disabled = true;
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await auth.signInWithPopup(provider);
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error("Erreur de connexion Google:", error);
+                loginError.textContent = error.message;
+                signInGoogleBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
